@@ -401,23 +401,23 @@ function App() {
 
     const cardStyle = { backgroundColor: m.cream, border: `1px solid ${m.stone}`, borderRadius: 12, padding: 20 };
     const textHeaderStyle = { fontFamily: 'Georgia, "Times New Roman", serif', color: m.darkForest, fontWeight: 600 };
+    
     const tabStyle = (isActive) => ({
-    	cursor: "pointer", 
-    	padding: "10px 16px", 
-    	fontSize: 14, 
-    	fontWeight: 600,
-    	borderRadius: "8px 8px 0 0", 
-    	border: `1px solid ${m.stone}`,
-    	// 1. Change 'none' to m.cream so the active tab matches the card background below it
-    	borderBottom: isActive ? `1px solid ${m.cream}` : `1px solid ${m.stone}`,
-    	backgroundColor: isActive ? m.cream : "transparent",
-    	color: isActive ? m.darkForest : m.warmGrey,
-    	transition: "all 0.15s ease", 
-    	marginBottom: "-1px",
-    	// 2. Add relative positioning and z-indexing to let the active tab overlap the line
-    	position: "relative",
-    	zIndex: isActive ? 10 : 1
-});
+        cursor: "pointer", 
+        padding: "10px 16px", 
+        fontSize: 14, 
+        fontWeight: 600,
+        borderRadius: "8px 8px 0 0", 
+        border: `1px solid ${m.stone}`,
+        borderBottom: isActive ? `1px solid ${m.cream}` : `1px solid ${m.stone}`,
+        backgroundColor: isActive ? m.cream : "transparent",
+        color: isActive ? m.darkForest : m.warmGrey,
+        transition: "all 0.15s ease", 
+        marginBottom: "-1px",
+        marginRight: "4px",
+        position: "relative",
+        zIndex: isActive ? 10 : 1
+    });
 
     const ct = state.cycleTracking || defaultState.cycleTracking;
 
@@ -435,9 +435,10 @@ function App() {
                 </div>
             </header>
 
+            { }
             <main style={{ maxWidth: 800, margin: "24px auto 0", padding: "0 16px" }}>
 
-                <section style={cardStyle} className="space-y-4">
+                <section style={cardStyle} className="space-y-4 mb-6">
                     <h2 style={{ ...textHeaderStyle, fontSize: 18, margin: 0 }} className="flex items-center gap-2">
                         <Icons.Calendar size={18} color={m.gold} /> Base Temporal &amp; Endocrine Climate
                     </h2>
@@ -476,7 +477,7 @@ function App() {
                     </div>
                 </section>
 
-		<div className="flex border-b" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
+                <div className="flex border-b" style={{ borderColor: m.stone }}>
                     <button onClick={() => updateState({ activeTab: "morning" })} style={tabStyle(state.activeTab === "morning")} className="capitalize flex items-center gap-1.5">
                         <Icons.Sun size={14} /> Morning Check-In
                     </button>
@@ -491,7 +492,7 @@ function App() {
                     </button>
                 </div>
 
-		<div className="p-5 space-y-6" style={{ backgroundColor: m.cream }}>                
+                <div className="p-5 border-l border-r border-b rounded-b-xl space-y-6 animate-fadeIn" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
                     {state.activeTab === "cycle" ? (
                         <div className="space-y-6">
                             <div className="p-4 rounded-lg border bg-white" style={{ borderColor: m.stone }}>
@@ -837,7 +838,7 @@ function App() {
                     )}
                 </div>
 
-		<section style={{ ...cardStyle, marginTop: 24 }} className="space-y-4">
+                <section style={{ ...cardStyle, marginTop: 24 }} className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 style={{ ...textHeaderStyle, fontSize: 18, margin: 0 }} className="flex items-center gap-2">
                             <Icons.Sparkles size={18} color={m.gold} /> Obsidian YAML Exporter
