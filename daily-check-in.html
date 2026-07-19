@@ -435,7 +435,7 @@ function App() {
                 </div>
             </header>
 
-            <main style={{ maxWidth: 800, margin: "24px auto 0", padding: "0 16px" }} className="space-y-6">
+            <main style={{ maxWidth: 800, margin: "24px auto 0", padding: "0 16px" }}>
 
                 <section style={cardStyle} className="space-y-4">
                     <h2 style={{ ...textHeaderStyle, fontSize: 18, margin: 0 }} className="flex items-center gap-2">
@@ -476,7 +476,7 @@ function App() {
                     </div>
                 </section>
 
-                <div className="flex border-b" style={{ borderColor: m.stone }}>
+		<div className="flex border-b" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
                     <button onClick={() => updateState({ activeTab: "morning" })} style={tabStyle(state.activeTab === "morning")} className="capitalize flex items-center gap-1.5">
                         <Icons.Sun size={14} /> Morning Check-In
                     </button>
@@ -491,7 +491,7 @@ function App() {
                     </button>
                 </div>
 
-                <div className="p-5 border-l border-r border-b rounded-b-xl space-y-6 animate-fadeIn" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
+		<div className="p-5 space-y-6" style={{ backgroundColor: m.cream }}>                
                     {state.activeTab === "cycle" ? (
                         <div className="space-y-6">
                             <div className="p-4 rounded-lg border bg-white" style={{ borderColor: m.stone }}>
@@ -837,7 +837,7 @@ function App() {
                     )}
                 </div>
 
-                <section style={cardStyle} className="space-y-4">
+		<section style={{ ...cardStyle, marginTop: 24 }} className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 style={{ ...textHeaderStyle, fontSize: 18, margin: 0 }} className="flex items-center gap-2">
                             <Icons.Sparkles size={18} color={m.gold} /> Obsidian YAML Exporter
