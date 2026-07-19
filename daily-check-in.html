@@ -188,16 +188,23 @@
             emotional: {}
         });
 
-        const defaultState = {
-            date: new Date().toISOString().split("T")[0],
-            weekNumber: "",
-            activeTab: "morning", // morning, afternoon, evening
-            cycleDay: "",
-            cyclePhase: "follicular",
-            morning: defaultSingleCheckin(),
-            afternoon: defaultSingleCheckin(),
-            evening: defaultSingleCheckin()
-        };
+const defaultState = {
+    date: new Date().toISOString().split("T")[0],
+    weekNumber: "",
+    activeTab: "morning", // morning, afternoon, evening, cycle
+    cycleDay: "",
+    cyclePhase: "follicular",
+    morning: defaultSingleCheckin(),
+    afternoon: defaultSingleCheckin(),
+    evening: defaultSingleCheckin(),
+    // Insert this new object tracking parameter:
+    cycleTracking: {
+        isNewCycle: false,
+        bleeding: "None",
+        fluid: "Dry",
+        intimacy: "None"
+    }
+};
 
         const Icons = {
             Clock: ({ size = 16, color = "currentColor" }) => (
@@ -578,22 +585,131 @@
                         </section>
 
                         {/* INTERACTIVE WORKFLOW TABS */}
-                        <div>
-                            <div className="flex border-b" style={{ borderColor: m.stone }}>
-                                <button onClick={() => updateState({ activeTab: "morning" })} style={tabStyle(state.activeTab === "morning")} className="capitalize flex items-center gap-1.5">
-                                    <Icons.Sun size={14} /> Morning Check-In
-                                </button>
-                                <button onClick={() => updateState({ activeTab: "afternoon" })} style={tabStyle(state.activeTab === "afternoon")} className="capitalize flex items-center gap-1.5">
-                                    <Icons.Activity size={14} /> Afternoon Check-In
-                                </button>
-                                <button onClick={() => updateState({ activeTab: "evening" })} style={tabStyle(state.activeTab === "evening")} className="capitalize flex items-center gap-1.5">
-                                    <Icons.Moon size={14} /> Evening/Night Check-In
-                                </button>
-                            </div>
+<div className="flex border-b" style={{ borderColor: m.stone }}>
+    <button onClick={() => updateState({ activeTab: "morning" })} style={tabStyle(state.activeTab === "morning")} className="capitalize flex items-center gap-1.5">
+        <Icons.Sun size={14} /> Morning Check-In
+    </button>
+    <button onClick={() => updateState({ activeTab: "afternoon" })} style={tabStyle(state.activeTab === "afternoon")} className="capitalize flex items-center gap-1.5">
+        <Icons.Activity size={14} /> Afternoon Check-In
+    </button>
+    <button onClick={() => updateState({ activeTab: "evening" })} style={tabStyle(state.activeTab === "evening")} className="capitalize flex items-center gap-1.5">
+        <Icons.Moon size={14} /> Evening/Night Check-In
+    </button>
+    {/* Insert this new button selector: */}
+    <button onClick={() => updateState({ activeTab: "cycle" })} style={tabStyle(state.activeTab === "cycle")} className="capitalize flex items-center gap-1.5">
+        <Icons.Sparkles size={14} /> Cycle Tracking
+    </button>
+</div>
 
                             {/* CHRONOLOGICAL PANEL CONTAINER */}
                             <div className="p-5 border-l border-r border-b rounded-b-xl space-y-6" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
-                                
+{state.activeTab === "cycle" ? (
+    <div className="space-y-6 animate-fadeIn">
+        {/* Start of New Cycle Switch */}
+        <div className="p-4 rounded-lg border bg-white" style={{ borderColor: m.stone }}>
+            <div className="flex items-center justify-between">
+                <div>
+                    <span className="text-sm font-semibold text-slate-700 block">Start of New Cycle Indicator</span>
+                    <span className="text-xs text-slate-400">Toggling to 'Yes' automatically overrides and resets your current Cycle Day back to 1.</span>
+                </div>
+                <button
+                    onClick={() => {
+                        const nextState = !state.cycleTracking.isNewCycle;
+                        setState(prev => ({
+                            ...prev,
+                            cycleDay: nextState ? "1" : prev.cycleDay,
+                            cycleTracking: { ...prev.cycleTracking, isNewCycle: nextState }
+                        }));
+                    }}
+                    className="px-4 py-2 rounded-lg text-xs font-bold border transition"
+                    style={{
+                        borderColor: state.cycleTracking.isNewCycle ? m.terracotta : m.stone,
+                        backgroundColor: state.cycleTracking.isNewCycle ? "rgba(182,141,118,0.12)" : "transparent",
+                        color: state.cycleTracking.isNewCycle ? m.darkForest : m.warmGrey
+                    }}
+                >
+                    {state.cycleTracking.isNewCycle ? "YES — DAY 1 RESET" : "NO — CONTINUOUS CYCLE"}
+                </button>
+            </div>
+        </div>
+
+        {/* Bleeding Options Matrix */}
+        <div className="p-4 rounded-lg border bg-white space-y-2" style={{ borderColor: m.stone }}>
+            <label className="block text-xs font-semibold uppercase text-slate-500">Bleeding Matrix Flow</label>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {["None", "Spotting", "Light", "Moderate", "Heavy"].map(option => {
+                    const active = state.cycleTracking.bleeding === option;
+                    return (
+                        <button
+                            key={option}
+                            onClick={() => setState(p => ({ ...p, cycleTracking: { ...p.cycleTracking, bleeding: option } }))}
+                            className="py-2 text-xs font-semibold border rounded-lg transition-all"
+                            style={{
+                                borderColor: active ? m.terracotta : m.stone,
+                                backgroundColor: active ? "rgba(182,141,118,0.15)" : "transparent",
+                                color: active ? m.darkForest : m.warmGrey
+                            }}
+                        >
+                            {option}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+
+        {/* Fluid Options Matrix */}
+        <div className="p-4 rounded-lg border bg-white space-y-2" style={{ borderColor: m.stone }}>
+            <label className="block text-xs font-semibold uppercase text-slate-500">Cervical Fluid Consistency</label>
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                {["Bleeding", "Dry", "Sticky", "Creamy", "Egg White", "Watery"].map(option => {
+                    const active = state.cycleTracking.fluid === option;
+                    return (
+                        <button
+                            key={option}
+                            onClick={() => setState(p => ({ ...p, cycleTracking: { ...p.cycleTracking, fluid: option } }))}
+                            className="py-2 text-xs font-semibold border rounded-lg transition-all"
+                            style={{
+                                borderColor: active ? m.gold : m.stone,
+                                backgroundColor: active ? "rgba(186,148,94,0.15)" : "transparent",
+                                color: active ? m.darkForest : m.warmGrey
+                            }}
+                        >
+                            {option}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+
+        {/* Intimacy Options Matrix */}
+        <div className="p-4 rounded-lg border bg-white space-y-2" style={{ borderColor: m.stone }}>
+            <label className="block text-xs font-semibold uppercase text-slate-500">Intimacy Metrics</label>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {["None", "Unprotected", "Protected", "Condom", "Withdrawal"].map(option => {
+                    const active = state.cycleTracking.intimacy === option;
+                    return (
+                        <button
+                            key={option}
+                            onClick={() => setState(p => ({ ...p, cycleTracking: { ...p.cycleTracking, intimacy: option } }))}
+                            className="py-2 text-xs font-semibold border rounded-lg transition-all"
+                            style={{
+                                borderColor: active ? m.forest : m.stone,
+                                backgroundColor: active ? "rgba(69,115,93,0.12)" : "transparent",
+                                color: active ? m.darkForest : m.warmGrey
+                            }}
+                        >
+                            {option}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    </div>
+) : (
+    /* Open a fragment wrapper to isolate old contents */
+    <React.Fragment>
+        {/* Old contents: Keep the Time Window fields, Vitals, Sleep Parameters, Meals etc. right here */}                                
+
                                 {/* 1. Time Frame Block */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
@@ -983,7 +1099,9 @@
 
                             </div>
                         </div>
-
+</React.Fragment>
+    )}
+</div>
                         {/* RAG-OPTIMIZED YAML EXPORTER CODE BLOCK */}
                         <section style={cardStyle} className="space-y-4">
                             <div className="flex justify-between items-center">
