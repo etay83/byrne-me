@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Work Day Check-In</title>
+    <title>Second Arrow Cockpit</title>
     <!-- Tailwind CSS for clean layout utilities -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React 18 & Babel for a native, unminified, highly editable browser experience -->
@@ -60,7 +60,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        /* STREAMING_CHUNK:Configuring custom earth-toned design tokens... */
+        /* STREAMING_CHUNK:Configuring custom design tokens... */
         const m = {
             forest: "#45735d",
             gold: "#ba945e",
@@ -148,10 +148,13 @@
                 { id: "client_c", name: "Client C (Tier 3)", weight: 3.0 }
             ],
             scratchpadNotes: "",
+            refinedNotes: "",
+            noteStyle: "soap", // soap, birp, narrative
+            coPilotPrompt: "",
+            coPilotResponse: "",
             weekendDebtCarryover: false
         };
 
-        /* STREAMING_CHUNK:Declaring native SVG icons for UI performance... */
         const Icons = {
             Activity: ({ size = 16, color = "currentColor" }) => (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
@@ -218,6 +221,9 @@
             ),
             Sparkles: ({ size = 16, color = "currentColor" }) => (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            ),
+            Clock: ({ size = 16, color = "currentColor" }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             )
         };
 
@@ -266,7 +272,57 @@
             }
         }
 
-        /* STREAMING_CHUNK:Initializing state engines... */
+        /* STREAMING_CHUNK:Structuring standard asynchronous Gemini API function... */
+        async function fetchGeminiAPI(prompt, systemInstruction = "") {
+            const apiKey = ""; // Canvas framework injects API key automatically at runtime. Keep empty.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+            if (systemInstruction) {
+                payload.systemInstruction = {
+                    parts: [{ text: systemInstruction }]
+                };
+            }
+
+            const maxAttempts = 3;
+            let currentDelay = 1000;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && attempt < maxAttempts - 1) {
+                            await new Promise(resolve => setTimeout(resolve, currentDelay));
+                            currentDelay *= 2;
+                            continue;
+                        }
+                        throw new Error(`Gemini API responded with status ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!textResult) {
+                        throw new Error("Empty content received from Gemini.");
+                    }
+                    return textResult;
+                } catch (err) {
+                    if (attempt === maxAttempts - 1) {
+                        throw err;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, currentDelay));
+                    currentDelay *= 2;
+                }
+            }
+        }
+
+        /* STREAMING_CHUNK:App component logic... */
         function App() {
             const [state, setState] = React.useState(() => {
                 try {
@@ -281,6 +337,8 @@
             });
 
             const [inlineMessage, setInlineMessage] = React.useState(null);
+            const [isAiRestructuring, setIsAiRestructuring] = React.useState(false);
+            const [isAiBrainstorming, setIsAiBrainstorming] = React.useState(false);
 
             React.useEffect(() => {
                 try {
@@ -309,11 +367,11 @@
 
             // Automated Endocrine Load scoring logic based on symptom checklist tally
             const activeSymptomCount = [
-                state.symptoms.pain,
-                state.symptoms.sleep,
-                state.symptoms.sensory,
-                state.symptoms.fog,
-                state.symptoms.bleeding
+                state.symptoms?.pain,
+                state.symptoms?.sleep,
+                state.symptoms?.sensory,
+                state.symptoms?.fog,
+                state.symptoms?.bleeding
             ].filter(Boolean).length;
 
             const computedEndocrineLoad = activeSymptomCount === 0 ? 1.0 : activeSymptomCount <= 2 ? 2.0 : 3.0;
@@ -375,6 +433,41 @@
             const [newClientWeight, setNewClientWeight] = React.useState(2);
             const [rosterExpanded, setRosterExpanded] = React.useState(false);
 
+            // Client editor states
+            const [editingClientId, setEditingClientId] = React.useState(null);
+            const [editClientName, setEditClientName] = React.useState("");
+            const [editClientWeight, setEditClientWeight] = React.useState(2.0);
+
+            const startEditing = (client) => {
+                setEditingClientId(client.id);
+                setEditClientName(client.name.split(" (")[0]);
+                setEditClientWeight(client.weight);
+            };
+
+            const saveClientEdition = (clientId) => {
+                if (!editClientName.trim()) {
+                    setInlineMessage({ type: "error", text: "Patient initials or name cannot be empty." });
+                    return;
+                }
+                const updatedClients = state.clients.map(c => {
+                    if (c.id === clientId) {
+                        return {
+                            ...c,
+                            name: `${editClientName.trim()} (Tier ${editClientWeight})`,
+                            weight: Number(editClientWeight)
+                        };
+                    }
+                    return c;
+                });
+                updateState({ clients: updatedClients });
+                setEditingClientId(null);
+                setInlineMessage({ type: "success", text: "Clinical profile successfully updated." });
+            };
+
+            const cancelEditing = () => {
+                setEditingClientId(null);
+            };
+
             const addClient = () => {
                 if (!newClientName.trim()) {
                     setInlineMessage({ type: "error", text: "Please enter client initials first." });
@@ -394,7 +487,55 @@
                 setInlineMessage({ type: "success", text: "Client removed." });
             };
 
-            /* STREAMING_CHUNK:Constructing YAML markdown export generator... */
+            /* STREAMING_CHUNK:Asynchronous AI Note restructuring triggers... */
+            const triggerAiNoteRestructure = async () => {
+                if (!state.scratchpadNotes.trim()) {
+                    setInlineMessage({ type: "error", text: "Note scratchpad sandbox is empty. Please enter rough bullet points first." });
+                    return;
+                }
+                setIsAiRestructuring(true);
+                setInlineMessage(null);
+
+                const sysInstruction = `You are a world-class clinical documentation assistant for a neurodiversity-affirming LCSW therapist. Your job is to restructure raw, messy, or dictated clinical session notes into a clean, professional, and anonymous SOAP (Subjective, Objective, Assessment, Plan) or BIRP (Behavior, Intervention, Response, Plan) format, or a clean clinical summary as requested. CRITICAL: Strictly protect privacy. Replace any names with initials or placeholders like '[Client]'. Use professional, respectful, neurodiversity-affirming, and strengths-based terminology. Do not make up unmentioned facts.`;
+                const prompt = `Restructure the following session bullet points into a professional, structured ${state.noteStyle.toUpperCase()} format:\n\n${state.scratchpadNotes}`;
+
+                try {
+                    const result = await fetchGeminiAPI(prompt, sysInstruction);
+                    updateState({ refinedNotes: result });
+                    setInlineMessage({ type: "success", text: "AI Restructuring complete!" });
+                } catch (err) {
+                    console.error("Gemini API notes restructuring failed", err);
+                    setInlineMessage({ type: "error", text: "AI restructuring failed. Ensure connection or API key is active." });
+                } finally {
+                    setIsAiRestructuring(false);
+                }
+            };
+
+            /* STREAMING_CHUNK:Asynchronous AI Co-Pilot query triggers... */
+            const triggerAiCoPilot = async (customPrompt = "") => {
+                const targetPrompt = customPrompt || state.coPilotPrompt;
+                if (!targetPrompt.trim()) {
+                    setInlineMessage({ type: "error", text: "Please enter a question or click an clinical intervention preset." });
+                    return;
+                }
+                setIsAiBrainstorming(true);
+                setInlineMessage(null);
+
+                const sysInstruction = `You are a highly experienced, neurodiversity-affirming clinical supervisor and somatic practitioner. Provide creative, practical, and somatic-oriented clinical intervention suggestions, psychoeducation drafts, or sensory decompression tips based on the therapist's query. Structure your advice clearly with clean bullet points, maintaining a compassionate, clinical, and precise tone. Maximize practical somatic methods.`;
+
+                try {
+                    const result = await fetchGeminiAPI(targetPrompt, sysInstruction);
+                    updateState({ coPilotResponse: result, coPilotPrompt: customPrompt ? "" : targetPrompt });
+                    setInlineMessage({ type: "success", text: "Clinical consultation processed!" });
+                } catch (err) {
+                    console.error("Gemini API clinical co-pilot failed", err);
+                    setInlineMessage({ type: "error", text: "AI consult failed. Check network parameters." });
+                } finally {
+                    setIsAiBrainstorming(false);
+                }
+            };
+
+            // Compiled RAG-Optimized YAML markdown output with fallback support
             const compiledMarkdown = React.useMemo(() => {
                 const today = new Date().toISOString().split("T")[0];
                 const escapeQuotes = str => (str || "").replace(/"/g, '\\"');
@@ -459,13 +600,6 @@
                 }
             };
 
-            const toggleEnergyStealer = (id) => {
-                const stealers = new Set(state.energyStealers || []);
-                if (stealers.has(id)) stealers.delete(id);
-                else stealers.add(id);
-                updateState({ energyStealers: Array.from(stealers) });
-            };
-
             const toggleMorningTask = (idx) => {
                 const morningChecklist = [...state.morningChecklist];
                 morningChecklist[idx] = !morningChecklist[idx];
@@ -476,11 +610,6 @@
                 const shutdownChecklist = [...state.shutdownChecklist];
                 shutdownChecklist[idx] = !shutdownChecklist[idx];
                 updateState({ shutdownChecklist });
-            };
-
-            const resetCockpit = () => {
-                updateState(defaultState);
-                setInlineMessage({ type: "info", text: "Dashboard returned to default workday baselines." });
             };
 
             const btnBaseStyle = {
@@ -505,7 +634,6 @@
                 fontWeight: 600
             };
 
-            // Unified, consistent tabs navigation style matching somatic check-in pages
             const tabStyle = (isActive) => ({
                 cursor: "pointer",
                 padding: "10px 16px",
@@ -523,7 +651,6 @@
                 zIndex: isActive ? 10 : 1
             });
 
-            // Dynamic progress-bar filling track style generator for active visual response
             const getSliderStyle = (val, min, max, baseColor) => {
                 const pct = ((val - min) / (max - min)) * 100;
                 return {
@@ -540,7 +667,7 @@
                 <div style={{ minHeight: "100vh", backgroundColor: m.warmWhite, color: m.warmGrey, fontFamily: "system-ui, -apple-system, sans-serif" }} className="pb-24">
                     
                     {/* GLOBAL MASTER HEADER */}
-                    <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${m.stone}` }}>
+                    <header style={{ display: "flex", alignItems: "center", justifyValue: "space-between", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${m.stone}` }}>
                         <div>
                             <h1 style={{ ...textHeaderStyle, fontSize: 22, margin: 0 }}>Second Arrow Cockpit</h1>
                             <p style={{ fontSize: 12, color: m.coolGrey, margin: "4px 0 0" }}>
@@ -906,9 +1033,83 @@
                                             value={state.scratchpadNotes}
                                             onChange={e => updateState({ scratchpadNotes: e.target.value })}
                                             placeholder="Write session summaries..."
-                                            className="w-full h-32 p-3 text-xs border rounded-lg bg-slate-50 focus:outline-none focus:border-stone font-mono"
+                                            className="w-full h-32 p-3 text-xs border rounded-lg bg-slate-50 focus:outline-none focus:border-stone font-mono mb-2"
                                             style={{ borderColor: m.stone, color: m.darkForest }}
                                         />
+                                        
+                                        {/* GEMINI AI NOTE RESTRUCTURING MODULE */}
+                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3 mb-2">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                <div>
+                                                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                                        <Icons.Sparkles size={14} color={m.gold} /> Gemini Documentation Assistant
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500 block">Converts messy notes into clean, HIPAA-compliant client anonymous logs.</span>
+                                                </div>
+                                                <select 
+                                                    value={state.noteStyle} 
+                                                    onChange={e => updateState({ noteStyle: e.target.value })}
+                                                    className="p-1 border rounded text-xs bg-white text-slate-700 font-semibold focus:outline-none"
+                                                    style={{ borderColor: m.stone }}
+                                                >
+                                                    <option value="soap">SOAP Note Format</option>
+                                                    <option value="birp">BIRP Note Format</option>
+                                                    <option value="narrative">Affirming Narrative Summary</option>
+                                                </select>
+                                            </div>
+
+                                            <button 
+                                                onClick={triggerAiNoteRestructure}
+                                                disabled={isAiRestructuring}
+                                                className="w-full py-2 bg-slate-800 text-white font-semibold text-xs rounded hover:bg-slate-700 transition flex items-center justify-center gap-2"
+                                            >
+                                                {isAiRestructuring ? (
+                                                    <span className="flex items-center gap-1.5">
+                                                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                        Restructuring Telemetry...
+                                                    </span>
+                                                ) : (
+                                                    <span>✨ Restructure Note with Gemini AI</span>
+                                                )}
+                                            </button>
+
+                                            {state.refinedNotes && (
+                                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                                    <span className="text-[11px] font-bold text-slate-600 block uppercase">Restructured Output (Secure & Anonymous)</span>
+                                                    <div className="bg-white p-3 rounded border text-xs text-slate-700 font-mono whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-48" style={{ borderColor: m.stone }}>
+                                                        {state.refinedNotes}
+                                                    </div>
+                                                    <div className="flex justify-end gap-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                const el = document.createElement('textarea');
+                                                                el.value = state.refinedNotes;
+                                                                document.body.appendChild(el);
+                                                                el.select();
+                                                                document.execCommand('copy');
+                                                                document.body.removeChild(el);
+                                                                setInlineMessage({ type: "success", text: "Refined note copied to clipboard!" });
+                                                            }}
+                                                            className="px-2.5 py-1 text-[11px] font-semibold bg-white border rounded hover:bg-slate-50 transition"
+                                                            style={{ borderColor: m.stone }}
+                                                        >
+                                                            Copy AI Draft
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                updateState({ scratchpadNotes: state.refinedNotes, refinedNotes: "" });
+                                                                setInlineMessage({ type: "success", text: "Restructured note written to scratchpad!" });
+                                                            }}
+                                                            className="px-2.5 py-1 text-[11px] font-semibold text-white rounded hover:opacity-90 transition"
+                                                            style={{ backgroundColor: m.forest }}
+                                                        >
+                                                            Apply to Sandbox
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="flex justify-between items-center">
                                             <button onClick={() => updateState({ scratchpadNotes: "" })} className="text-xs font-semibold text-rose-500 hover:underline">Clear Canvas</button>
                                             <button 
@@ -927,6 +1128,78 @@
                                                 Copy Draft Notes
                                             </button>
                                         </div>
+                                    </section>
+
+                                    {/* GEMINI AI CLINICAL BRAINSTORMING CO-PILOT CARD */}
+                                    <section className="bg-white p-4 rounded-xl border border-stone/80 space-y-3" style={{ borderColor: m.stone }}>
+                                        <h3 style={{ ...textHeaderStyle, fontSize: 16 }} className="flex items-center gap-1.5">
+                                            <Icons.Sparkles size={18} color={m.gold} /> Somatic &amp; Clinical Brainstorming Co-Pilot
+                                        </h3>
+                                        <p className="text-xs text-slate-500">Query your supervisor assistant or tap clinical presets when executive function runs thin.</p>
+
+                                        {/* Presets */}
+                                        <div className="space-y-1.5">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Somatic Grounding Presets</span>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {[
+                                                    { label: "Luteal sensory overwhelm", q: "What are some highly structured, non-verbal somatic grounding exercises for an autistic adult experiencing luteal sensory overwhelm?" },
+                                                    { label: "ADHD Rejection Sensitivity", q: "Draft some short somatic transition strategies for a trauma client with ADHD experiencing an acute RSD spike." },
+                                                    { label: "Clinician decompression gaps", q: "Suggest a rapid, sensory-friendly 5-minute cooldown routing for a therapist to transition between intensive trauma blocks." }
+                                                ].map((p, idx) => (
+                                                    <button 
+                                                        key={idx}
+                                                        onClick={() => triggerAiCoPilot(p.q)}
+                                                        className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border rounded-full text-[10px] font-semibold transition"
+                                                        style={{ borderColor: m.stone, color: m.darkForest }}
+                                                    >
+                                                        🎯 {p.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Ask your co-pilot: e.g. draft a simplified polyvagal grounding explanation..."
+                                                value={state.coPilotPrompt}
+                                                onChange={e => updateState({ coPilotPrompt: e.target.value })}
+                                                className="flex-1 p-2 border rounded-lg text-xs font-semibold focus:outline-none focus:border-stone"
+                                                style={{ borderColor: m.stone, color: m.darkForest, backgroundColor: m.warmWhite }}
+                                            />
+                                            <button 
+                                                onClick={() => triggerAiCoPilot()}
+                                                disabled={isAiBrainstorming}
+                                                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs rounded-lg transition"
+                                            >
+                                                {isAiBrainstorming ? "..." : "Consult"}
+                                            </button>
+                                        </div>
+
+                                        {state.coPilotResponse && (
+                                            <div className="bg-slate-50 p-3.5 rounded-lg border text-xs text-slate-700 leading-relaxed space-y-2 animate-fadeIn" style={{ borderColor: m.stone }}>
+                                                <div className="flex justify-between items-center border-b pb-1 border-slate-200">
+                                                    <span className="font-bold text-[10px] uppercase text-slate-400">Clinical Recommendation Response</span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const el = document.createElement('textarea');
+                                                            el.value = state.coPilotResponse;
+                                                            document.body.appendChild(el);
+                                                            el.select();
+                                                            document.execCommand('copy');
+                                                            document.body.removeChild(el);
+                                                            setInlineMessage({ type: "success", text: "Consultation response copied to clipboard!" });
+                                                        }}
+                                                        className="text-stone hover:text-slate-800 text-[10px] font-bold underline"
+                                                    >
+                                                        Copy Consult
+                                                    </button>
+                                                </div>
+                                                <div className="whitespace-pre-wrap font-sans max-h-48 overflow-y-auto pr-1">
+                                                    {state.coPilotResponse}
+                                                </div>
+                                            </div>
+                                        )}
                                     </section>
 
                                     {/* SHUTDOWN AIRLOCK CHECKLIST */}
@@ -1015,23 +1288,77 @@
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            {state.clients.map(client => (
-                                                <div key={client.id} className="p-3 rounded-lg border bg-slate-50 flex items-center justify-between transition hover:border-slate-400" style={{ borderColor: m.stone }}>
-                                                    <div>
-                                                        <span className="text-xs font-bold text-slate-800">{client.name.split(" (")[0]}</span>
-                                                        <span className="block text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Tier {client.weight.toFixed(1)} Weight</span>
+                                            {state.clients.map(client => {
+                                                const isEditing = editingClientId === client.id;
+                                                return (
+                                                    <div key={client.id} className="p-3 rounded-lg border bg-slate-50 flex items-center justify-between transition hover:border-slate-400" style={{ borderColor: m.stone }}>
+                                                        {isEditing ? (
+                                                            <div className="space-y-2 w-full">
+                                                                <div className="flex gap-2">
+                                                                    <input 
+                                                                        type="text" 
+                                                                        value={editClientName} 
+                                                                        onChange={e => setEditClientName(e.target.value)}
+                                                                        className="p-1 border rounded text-xs bg-white flex-1 focus:outline-none focus:border-stone"
+                                                                        style={{ borderColor: m.stone, color: m.darkForest }}
+                                                                    />
+                                                                    <select
+                                                                        value={editClientWeight}
+                                                                        onChange={e => setEditClientWeight(Number(e.target.value))}
+                                                                        className="p-1 border rounded text-xs bg-white cursor-pointer"
+                                                                        style={{ borderColor: m.stone, color: m.darkForest }}
+                                                                    >
+                                                                        <option value={1.0}>Tier 1 (1.0)</option>
+                                                                        <option value={2.0}>Tier 2 (2.0)</option>
+                                                                        <option value={3.0}>Tier 3 (3.0)</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div className="flex justify-end gap-3 pt-1">
+                                                                    <button 
+                                                                        onClick={cancelEditing} 
+                                                                        className="text-stone hover:text-rose-505 text-xs underline"
+                                                                        title="Cancel"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => saveClientEdition(client.id)} 
+                                                                        className="text-stone hover:text-forest text-xs font-bold underline"
+                                                                        title="Save Changes"
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-between w-full">
+                                                                <div>
+                                                                    <span className="text-xs font-bold text-slate-800">{client.name.split(" (")[0]}</span>
+                                                                    <span className="block text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Tier {client.weight.toFixed(1)} Weight</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <button 
+                                                                        onClick={() => startEditing(client)}
+                                                                        className="text-stone hover:text-gold text-xs underline"
+                                                                        title="Edit Profile"
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+                                                                    {state.clients.length > 3 && (
+                                                                        <button 
+                                                                            onClick={() => removeClient(client.id)}
+                                                                            className="text-stone hover:text-rose-500 p-1 transition"
+                                                                            title="Delete Client"
+                                                                        >
+                                                                            <Icons.Trash2 size={15} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {state.clients.length > 3 && (
-                                                        <button 
-                                                            onClick={() => removeClient(client.id)}
-                                                            className="text-stone hover:text-rose-500 p-1 transition"
-                                                            title="Delete Client"
-                                                        >
-                                                            <Icons.Trash2 size={15} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </section>
 
