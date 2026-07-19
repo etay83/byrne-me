@@ -402,13 +402,22 @@ function App() {
     const cardStyle = { backgroundColor: m.cream, border: `1px solid ${m.stone}`, borderRadius: 12, padding: 20 };
     const textHeaderStyle = { fontFamily: 'Georgia, "Times New Roman", serif', color: m.darkForest, fontWeight: 600 };
     const tabStyle = (isActive) => ({
-        cursor: "pointer", padding: "10px 16px", fontSize: 14, fontWeight: 600,
-        borderRadius: "8px 8px 0 0", border: `1px solid ${m.stone}`,
-        borderBottom: isActive ? "none" : `1px solid ${m.stone}`,
-        backgroundColor: isActive ? m.cream : "transparent",
-        color: isActive ? m.darkForest : m.warmGrey,
-        transition: "all 0.15s ease", marginBottom: "-1px"
-    });
+    	cursor: "pointer", 
+    	padding: "10px 16px", 
+    	fontSize: 14, 
+    	fontWeight: 600,
+    	borderRadius: "8px 8px 0 0", 
+    	border: `1px solid ${m.stone}`,
+    	// 1. Change 'none' to m.cream so the active tab matches the card background below it
+    	borderBottom: isActive ? `1px solid ${m.cream}` : `1px solid ${m.stone}`,
+    	backgroundColor: isActive ? m.cream : "transparent",
+    	color: isActive ? m.darkForest : m.warmGrey,
+    	transition: "all 0.15s ease", 
+    	marginBottom: "-1px",
+    	// 2. Add relative positioning and z-indexing to let the active tab overlap the line
+    	position: "relative",
+    	zIndex: isActive ? 10 : 1
+});
 
     const ct = state.cycleTracking || defaultState.cycleTracking;
 
