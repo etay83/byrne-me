@@ -477,7 +477,7 @@ function App() {
                     </div>
                 </section>
 
-                <div className="flex border-b" style={{ borderColor: m.stone }}>
+		<div className="flex">
                     <button onClick={() => updateState({ activeTab: "morning" })} style={tabStyle(state.activeTab === "morning")} className="capitalize flex items-center gap-1.5">
                         <Icons.Sun size={14} /> Morning Check-In
                     </button>
@@ -492,7 +492,7 @@ function App() {
                     </button>
                 </div>
 
-		<div className="p-5 border-l border-r border-b rounded-b-xl rounded-tr-xl space-y-6 animate-fadeIn" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
+		<div className="p-5 border rounded-b-xl rounded-tr-xl space-y-6 animate-fadeIn" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
                     {state.activeTab === "cycle" ? (
                         <div className="space-y-6">
                             <div className="p-4 rounded-lg border bg-white" style={{ borderColor: m.stone }}>
