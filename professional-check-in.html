@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Second Arrow Cockpit</title>
+    <title>Daily Work Check In</title>
     <!-- Tailwind CSS for clean layout utilities -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React 18 & Babel for a native, unminified, highly editable browser experience -->
@@ -582,7 +582,7 @@
                     {/* GLOBAL MASTER HEADER */}
                     <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${m.stone}` }}>
                         <div>
-                            <h1 style={{ ...textHeaderStyle, fontSize: 22, margin: 0 }}>Second Arrow Cockpit</h1>
+                            <h1 style={{ ...textHeaderStyle, fontSize: 22, margin: 0 }}>Daily Work Check In</h1>
                             <p style={{ fontSize: 12, color: m.coolGrey, margin: "4px 0 0" }}>
                                 {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                             </p>
@@ -654,7 +654,7 @@
 
                     {/* THREE-TAB PROFESSIONAL NAVIGATION FRAMEWORK */}
                     <div style={{ maxWidth: 720, margin: "24px auto 0", padding: "0 16px" }}>
-                        <div className="flex border-b" style={{ borderColor: m.stone }}>
+                        <div className="flex" style={{ borderColor: m.stone }}>
                             <button onClick={() => updateState({ page: 1 })} style={tabStyle(state.page === 1)}>
                                 <span className="flex items-center gap-1.5"><Icons.Activity size={14} /> Clinical Flight Deck</span>
                             </button>
@@ -667,7 +667,7 @@
                         </div>
 
                         {/* CONTENT WRAPPER */}
-                        <div className="p-5 border rounded-b-xl rounded-tr-xl space-y-6 animate-fadeIn" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
+                        <div className="p-5 border rounded-b-xl space-y-6 animate-fadeIn" style={{ borderColor: m.stone, backgroundColor: m.cream }}>
                             
                             {/* TAB 1: CLINICAL FLIGHT DECK */}
                             {state.page === 1 && (
